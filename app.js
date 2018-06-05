@@ -1,4 +1,6 @@
 const express = require('express');
+const process = require('process');
+const fs = require('fs');
 const bodyparser = require('body-parser');
 
 const app = express();
@@ -12,20 +14,23 @@ app.all('*', function(req, res, next) {
 app.use(router);
 app.use(bodyparser.text);
 
-let port = 4444;
+let port = process.env.PORT || 4444;
+let ROOT_APP_PATH = process.env.IMG_PATH || fs.realpathSync('.');
 app.listen(port, function () {
-    console.log(port);
-});
-
-router.get('/', function (req, res) {
-    res.send('hello, user!');
+    console.log('Port:' + port);
+    console.log('App path:' + ROOT_APP_PATH);
 });
 
 let exec = require('child_process').exec;
-router.post('/', function(req,res){
+router.get('/', function(req,res){
     console.log('in post');
-    res.send('Message received');
-    exec('dot -Tpng graph.dot -o graph.png', (e, stdout, stderr)=> {
+    fs.writeFile(ROOT_APP_PATH + '/graph.dot', req.query['graph'], function(err) {
+        if(err) {
+            return console.log(err);
+        }
+        console.log("The file was saved!");
+    });
+    exec('dot -Tpng graph.dot -o ' + req.query['filename'], (e, stdout, stderr)=> {
         if (e || stderr) {
             console.error(e);
             console.error(stderr);
@@ -33,6 +38,7 @@ router.post('/', function(req,res){
         }
         console.log(stdout.toString());
     });
+    res.send(ROOT_APP_PATH + '/' + req.query['filename']);
 });
 
 module.exports = app;
